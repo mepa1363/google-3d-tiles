@@ -37,8 +37,8 @@ const INITIAL_VIEW_STATE = {
   pitch: 20,
 };
 
-const FLOOD_ZONE_DATA = "./data/tuflow_zones.geojson";
-const PROJECT_BOUNDS = "./data/tuflow_bounds.geojson";
+const FLOOD_ZONE_DATA = "/tuflow_zones.geojson";
+const PROJECT_BOUNDS = "/tuflow_bounds.geojson";
 
 // Color Scale Component
 const ColorScale = () => {
