@@ -9,7 +9,8 @@
   },
   "dependencies": {
     "d3-scale": "^2.0.0",
-    "deck.gl": "^8.9.13"
+    "deck.gl": "^8.9.13",
+    "react-google-autocomplete": "^2.7.3"
   },
   "devDependencies": {
     "typescript": "^4.6.0",

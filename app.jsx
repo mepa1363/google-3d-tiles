@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import { scaleLinear } from "d3-scale";
 import { createRoot } from "react-dom/client";
 import DeckGL from "@deck.gl/react";
@@ -8,6 +8,7 @@ import {
   DataFilterExtension,
   _TerrainExtension as TerrainExtension,
 } from "@deck.gl/extensions";
+import Autocomplete from "react-google-autocomplete";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // eslint-disable-line
 const TILESET_URL = "https://tile.googleapis.com/v1/3dtiles/root.json";
@@ -27,15 +28,6 @@ const colorScale = scaleLinear()
   .clamp(true)
   .domain([0, 15, 30, 45, 60, 75, 90, 105, 120])
   .range(COLORS);
-
-const INITIAL_VIEW_STATE = {
-  latitude: 34.26173,
-  longitude: -118.75033,
-  zoom: 15,
-  minZoom: 0,
-  maxZoom: 18,
-  pitch: 20,
-};
 
 const FLOOD_ZONE_DATA = "/tuflow_zones.geojson";
 const PROJECT_BOUNDS = "/tuflow_bounds.geojson";
@@ -143,6 +135,25 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
   const [extruded, setExtruded] = useState(false);
   const [elevationScale, setElevationScale] = useState(0.5);
 
+  const [initialViewState, setInitialViewState] = useState({
+    latitude: 34.26173,
+    longitude: -118.75033,
+    zoom: 15,
+    bearing: 0,
+    pitch: 0,
+  });
+
+  const goTo = useCallback((lat, lng) => {
+    setInitialViewState({
+      longitude: lng,
+      latitude: lat,
+      zoom: 17.5,
+      pitch: 0,
+      bearing: 0,
+      transitionDuration: 1000,
+    });
+  }, []);
+
   const layers = [
     new Tile3DLayer({
       id: "google-3d-tiles",
@@ -203,7 +214,7 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
     <div>
       <DeckGL
         style={{ backgroundColor: "#061714" }}
-        initialViewState={INITIAL_VIEW_STATE}
+        initialViewState={initialViewState}
         controller={true}
         layers={layers}
       />
@@ -235,6 +246,37 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
         <ElevationMultiplierControl
           value={elevationScale}
           onChange={setElevationScale}
+        />
+      </div>
+      <div
+        style={{
+          position: "absolute",
+          top: "10px",
+          right: "10px",
+          zIndex: 1,
+          backgroundColor: "white",
+          borderRadius: "5px",
+        }}
+      >
+        <Autocomplete
+          style={{
+            border: "none",
+            outline: "none",
+            width: "200px",
+            padding: "10px",
+            borderRadius: "5px",
+          }}
+          apiKey={GOOGLE_MAPS_API_KEY}
+          options={{
+            types: ["address"],
+          }}
+          onPlaceSelected={(place) => {
+            const { geometry } = place;
+            if (geometry && geometry.location) {
+              const { lat, lng } = geometry.location;
+              goTo(lat(), lng());
+            }
+          }}
         />
       </div>
     </div>
