@@ -4,6 +4,8 @@ import { createRoot } from "react-dom/client";
 import DeckGL from "@deck.gl/react";
 import { GeoJsonLayer } from "@deck.gl/layers";
 import { Tile3DLayer } from "@deck.gl/geo-layers";
+import { TileLayer } from "@deck.gl/geo-layers";
+import { BitmapLayer, PathLayer } from "@deck.gl/layers";
 import {
   DataFilterExtension,
   _TerrainExtension as TerrainExtension,
@@ -30,7 +32,6 @@ const colorScale = scaleLinear()
   .range(COLORS);
 
 const FLOOD_ZONE_DATA = "/tuflow_zones.geojson";
-const PROJECT_BOUNDS = "/tuflow_bounds.geojson";
 
 // Color Scale Component
 const ColorScale = () => {
@@ -129,6 +130,32 @@ const ElevationMultiplierControl = ({ onChange, value }) => {
   );
 };
 
+const devicePixelRatio =
+  (typeof window !== "undefined" && window.devicePixelRatio) || 1;
+
+// const tileLayer = new TileLayer({
+//   data: [
+//     `https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_API_KEY}`,
+//   ],
+//   maxRequests: 20,
+//   minZoom: 0,
+//   maxZoom: 19,
+//   zoomOffset: devicePixelRatio === 1 ? -1 : 0,
+//   renderSubLayers: (props) => {
+//     const {
+//       bbox: { west, south, east, north },
+//     } = props.tile;
+
+//     return [
+//       new BitmapLayer(props, {
+//         data: null,
+//         image: props.data,
+//         bounds: [west, south, east, north],
+//       }),
+//     ];
+//   },
+// });
+
 export default function App({ data = TILESET_URL, depth = 0 }) {
   const [credits, setCredits] = useState("");
   const [opacity, setOpacity] = useState(0.2);
@@ -175,23 +202,6 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
       operation: "terrain+draw",
     }),
     new GeoJsonLayer({
-      id: "project_boundaries",
-      data: PROJECT_BOUNDS,
-      extensions: [
-        new DataFilterExtension({ filterSize: 1 }),
-        new TerrainExtension(),
-      ],
-      stroked: false,
-      filled: true,
-      extruded: extruded,
-      getFillColor: ({ properties }) => colorScale(properties.flood_depth),
-      opacity,
-      getFilterValue: (f) => f.properties.flood_depth,
-      filterRange: [depth, 20],
-      getElevation: ({ properties }) => properties.flood_depth,
-      elevationScale: elevationScale,
-    }),
-    new GeoJsonLayer({
       id: "flood_zones",
       data: FLOOD_ZONE_DATA,
       extensions: [
@@ -208,12 +218,33 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
       getElevation: ({ properties }) => properties.flood_depth,
       elevationScale: elevationScale,
     }),
+    new TileLayer({
+      data: [
+        `https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_API_KEY}`,
+      ],
+      maxRequests: 20,
+      minZoom: 0,
+      maxZoom: 19,
+      zoomOffset: devicePixelRatio === 1 ? -1 : 0,
+      renderSubLayers: (props) => {
+        const {
+          bbox: { west, south, east, north },
+        } = props.tile;
+
+        return [
+          new BitmapLayer(props, {
+            data: null,
+            image: props.data,
+            bounds: [west, south, east, north],
+          }),
+        ];
+      },
+    }),
   ];
 
   return (
     <div>
       <DeckGL
-        style={{ backgroundColor: "#061714" }}
         initialViewState={initialViewState}
         controller={true}
         layers={layers}
