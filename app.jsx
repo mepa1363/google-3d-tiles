@@ -126,6 +126,37 @@ export default function App({ data = TILESET_URL, depth = 0, opacity = 0.2 }) {
         }}
       >
         <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
+          Flood Depth Legend
+        </div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: "10px",
+          }}
+        >
+          <span>Low</span>
+          <div
+            style={{
+              display: "flex",
+              marginLeft: "10px",
+              marginRight: "10px",
+            }}
+          >
+            {COLORS.map((color, index) => (
+              <div
+                key={index}
+                style={{
+                  backgroundColor: `rgb(${color.join(",")})`,
+                  width: "20px",
+                  height: "20px",
+                }}
+              />
+            ))}
+          </div>
+          <span>High</span>
+        </div>
+        <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
           Flood Zone Opacity
         </div>
         <div style={{ display: "flex", alignItems: "center" }}>
