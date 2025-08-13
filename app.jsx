@@ -1,16 +1,17 @@
-import React, { useState, useCallback } from "react";
+// deck.gl
+// SPDX-License-Identifier: MIT
+// Copyright (c) vis.gl contributors
+
+import React, { useState } from "react";
 import { scaleLinear } from "d3-scale";
 import { createRoot } from "react-dom/client";
-import DeckGL from "@deck.gl/react";
+import { DeckGL } from "@deck.gl/react";
 import { GeoJsonLayer } from "@deck.gl/layers";
 import { Tile3DLayer } from "@deck.gl/geo-layers";
-import { TileLayer } from "@deck.gl/geo-layers";
-import { BitmapLayer, PathLayer } from "@deck.gl/layers";
 import {
   DataFilterExtension,
   _TerrainExtension as TerrainExtension,
 } from "@deck.gl/extensions";
-import Autocomplete from "react-google-autocomplete";
 
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // eslint-disable-line
 const TILESET_URL = "https://tile.googleapis.com/v1/3dtiles/root.json";
@@ -31,155 +32,30 @@ const colorScale = scaleLinear()
   .domain([0, 15, 30, 45, 60, 75, 90, 105, 120])
   .range(COLORS);
 
+const INITIAL_VIEW_STATE = {
+  latitude: 34.26173,
+  longitude: -118.75033,
+  zoom: 15,
+  bearing: 0,
+  pitch: 0,
+};
+
 const FLOOD_ZONE_DATA = "/tuflow_zones.geojson";
 
-// Color Scale Component
-const ColorScale = () => {
+function getTooltip({ object }) {
   return (
-    <div>
-      <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
-        Flood Depth
-      </div>
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <span>Low</span>
-        <div
-          style={{
-            display: "flex",
-            marginLeft: "10px",
-            marginRight: "10px",
-            marginBottom: "10px",
-          }}
-        >
-          {COLORS.map((color, index) => (
-            <div
-              key={index}
-              style={{
-                backgroundColor: `rgb(${color.join(",")})`,
-                width: "20px",
-                height: "20px",
-              }}
-            />
-          ))}
-        </div>
-        <span>High</span>
-      </div>
-    </div>
+    object && {
+      html: `\
+    <div><b>Flood Depth</b></div>
+    <div>${object.properties.flood_depth} meters</div>
+    `,
+    }
   );
-};
+}
 
-// Opacity Control Component
-const OpacityControl = ({ onChange, value }) => {
-  return (
-    <div style={{ marginTop: "20px", display: "flex", alignItems: "center" }}>
-      <label
-        style={{ display: "flex", alignItems: "center", fontWeight: "bold" }}
-      >
-        Opacity
-        <input
-          style={{ marginLeft: "10px" }}
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-        />
-      </label>
-    </div>
-  );
-};
-
-// Extrusion Control Component
-const ExtrusionControl = ({ onChange, value }) => {
-  return (
-    <div style={{ marginTop: "20px", display: "flex", alignItems: "center" }}>
-      <label
-        style={{ display: "flex", alignItems: "center", fontWeight: "bold" }}
-      >
-        Enable extrusion
-        <input
-          style={{ marginLeft: "10px" }}
-          type="checkbox"
-          checked={value}
-          onChange={(e) => onChange(e.target.checked)}
-        />
-      </label>
-    </div>
-  );
-};
-
-// Elevation Multiplier Control Component
-const ElevationMultiplierControl = ({ onChange, value }) => {
-  return (
-    <div style={{ marginTop: "20px", display: "flex", alignItems: "center" }}>
-      <label
-        style={{ display: "flex", alignItems: "center", fontWeight: "bold" }}
-      >
-        Scale factor
-        <input
-          style={{ marginLeft: "10px" }}
-          type="range"
-          min="0"
-          max="1"
-          step="0.1"
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value))}
-        />
-      </label>
-    </div>
-  );
-};
-
-const devicePixelRatio =
-  (typeof window !== "undefined" && window.devicePixelRatio) || 1;
-
-// const tileLayer = new TileLayer({
-//   data: [
-//     `https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_API_KEY}`,
-//   ],
-//   maxRequests: 20,
-//   minZoom: 0,
-//   maxZoom: 19,
-//   zoomOffset: devicePixelRatio === 1 ? -1 : 0,
-//   renderSubLayers: (props) => {
-//     const {
-//       bbox: { west, south, east, north },
-//     } = props.tile;
-
-//     return [
-//       new BitmapLayer(props, {
-//         data: null,
-//         image: props.data,
-//         bounds: [west, south, east, north],
-//       }),
-//     ];
-//   },
-// });
-
-export default function App({ data = TILESET_URL, depth = 0 }) {
+export default function App({ data = TILESET_URL, depth = 0, opacity = 0.2 }) {
   const [credits, setCredits] = useState("");
-  const [opacity, setOpacity] = useState(0.2);
-  const [extruded, setExtruded] = useState(false);
-  const [elevationScale, setElevationScale] = useState(0.5);
-
-  const [initialViewState, setInitialViewState] = useState({
-    latitude: 34.26173,
-    longitude: -118.75033,
-    zoom: 15,
-    bearing: 0,
-    pitch: 0,
-  });
-
-  const goTo = useCallback((lat, lng) => {
-    setInitialViewState({
-      longitude: lng,
-      latitude: lat,
-      zoom: 17.5,
-      pitch: 0,
-      bearing: 0,
-      transitionDuration: 1000,
-    });
-  }, []);
+  const [opacityValue, setOpacity] = useState(opacity);
 
   const layers = [
     new Tile3DLayer({
@@ -210,44 +86,22 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
       ],
       stroked: false,
       filled: true,
-      extruded: extruded,
       getFillColor: ({ properties }) => colorScale(properties.flood_depth),
-      opacity,
+      opacity: opacityValue,
       getFilterValue: (f) => f.properties.flood_depth,
       filterRange: [depth, 120],
-      getElevation: ({ properties }) => properties.flood_depth,
-      elevationScale: elevationScale,
-    }),
-    new TileLayer({
-      data: [
-        `https://airquality.googleapis.com/v1/mapTypes/UAQI_RED_GREEN/heatmapTiles/{z}/{x}/{y}?key=${GOOGLE_MAPS_API_KEY}`,
-      ],
-      maxRequests: 20,
-      minZoom: 0,
-      maxZoom: 19,
-      zoomOffset: devicePixelRatio === 1 ? -1 : 0,
-      renderSubLayers: (props) => {
-        const {
-          bbox: { west, south, east, north },
-        } = props.tile;
-
-        return [
-          new BitmapLayer(props, {
-            data: null,
-            image: props.data,
-            bounds: [west, south, east, north],
-          }),
-        ];
-      },
+      pickable: true,
     }),
   ];
 
   return (
     <div>
       <DeckGL
-        initialViewState={initialViewState}
-        controller={true}
+        style={{ backgroundColor: "#061714" }}
+        initialViewState={INITIAL_VIEW_STATE}
+        controller={{ touchRotate: true, inertia: 250 }}
         layers={layers}
+        getTooltip={getTooltip}
       />
       <div
         style={{
@@ -271,44 +125,29 @@ export default function App({ data = TILESET_URL, depth = 0 }) {
           borderRadius: "5px",
         }}
       >
-        <ColorScale opacity={opacity} />
-        <OpacityControl value={opacity} onChange={setOpacity} />
-        <ExtrusionControl value={extruded} onChange={setExtruded} />
-        <ElevationMultiplierControl
-          value={elevationScale}
-          onChange={setElevationScale}
-        />
-      </div>
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          right: "10px",
-          zIndex: 1,
-          backgroundColor: "white",
-          borderRadius: "5px",
-        }}
-      >
-        <Autocomplete
-          style={{
-            border: "none",
-            outline: "none",
-            width: "200px",
-            padding: "10px",
-            borderRadius: "5px",
-          }}
-          apiKey={GOOGLE_MAPS_API_KEY}
-          options={{
-            types: ["address"],
-          }}
-          onPlaceSelected={(place) => {
-            const { geometry } = place;
-            if (geometry && geometry.location) {
-              const { lat, lng } = geometry.location;
-              goTo(lat(), lng());
-            }
-          }}
-        />
+        <div style={{ marginBottom: "10px", fontWeight: "bold" }}>
+          Flood Zone Opacity
+        </div>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <label
+            style={{
+              display: "flex",
+              alignItems: "center",
+              fontWeight: "bold",
+            }}
+          >
+            Opacity
+            <input
+              style={{ marginLeft: "10px" }}
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={opacityValue}
+              onChange={(e) => setOpacity(parseFloat(e.target.value))}
+            />
+          </label>
+        </div>
       </div>
     </div>
   );
